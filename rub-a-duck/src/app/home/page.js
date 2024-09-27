@@ -77,20 +77,21 @@ export default function Home() {
     e.preventDefault();
     setIsLoading(true);
     setError(null);
-
+  
     try {
-      const response = await fetch('/api/query', {
+      const response = await fetch('http://localhost:8000/api/query', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({ query: userInput }),
       });
-
+  
       if (!response.ok) {
-        throw new Error('Failed to fetch data');
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'Failed to fetch data');
       }
-
+  
       const data = await response.json();
       setProjectData(data);
     } catch (err) {
