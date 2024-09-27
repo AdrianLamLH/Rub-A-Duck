@@ -17,7 +17,7 @@ app = FastAPI()
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["http://localhost:3000"],  # Add your frontend URL here
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -35,19 +35,22 @@ class Subtask(BaseModel):
 
 class Task(BaseModel):
     task: str
+    estimated_time: str
+    technical_description: str
     subtasks: List[Subtask] = []
 
 class ProjectRequest(BaseModel):
     query: str
 
+# Global variable to store progress
+progress = {"current_depth": 0, "max_depth": 3}
+
 def extract_json(text):
     """Extract JSON from text, even if there's additional content."""
     logger.info(f"Attempting to extract JSON from: {text}")
     try:
-        # First, try to parse the entire text as JSON
         return json.loads(text)
     except json.JSONDecodeError:
-        # If that fails, try to find JSON-like content
         json_match = re.search(r'(\{[\s\S]*\})', text)
         if json_match:
             try:
@@ -58,25 +61,33 @@ def extract_json(text):
     logger.warning("Failed to extract JSON from text")
     return None
 
-def recursive_breakdown(task, depth=0, max_depth=3):
+def recursive_breakdown(task, initial_prompt, depth=0, max_depth=3):
+    global progress
+    progress["current_depth"] = depth
+    progress["max_depth"] = max_depth
+
     logger.info(f"Processing task at depth {depth}: {task}")
     if depth >= max_depth:
-        return Task(task=task, subtasks=[])
+        return Task(task=task, estimated_time="", technical_description="", subtasks=[])
 
     prompt = f"""
     As an experienced technical software engineering project manager at Google, break down the following task into 3-5 smaller subtasks:
-    Task: {task}
+    
+    Initial Project: {initial_prompt}
+    Current Task: {task}
+
+    Remember to keep the subtasks specific and always relate them back to the initial project. Each subtask should be a concrete step towards completing the overall project.
 
     For each subtask, provide:
-    1. A brief description
-    2. An in-depth technical description of the subtask (150-250 words)
+    1. A brief description that clearly relates to both the current task and the initial project
+    2. An in-depth technical description of the subtask (150-250 words) that explains how it fits into the overall project
     3. Estimated time to complete (in hours)
 
     Format your response STRICTLY as a JSON object with the following structure, and NOTHING ELSE:
     {{
-        "task": "Main task description",
+        "task": "Current task description",
         "estimated_time": "Total estimated time in hours",
-        "technical_description": "Detailed technical description of the main task",
+        "technical_description": "Detailed technical description of the current task",
         "subtasks": [
             {{
                 "description": "Subtask 1 brief description",
@@ -103,32 +114,36 @@ def recursive_breakdown(task, depth=0, max_depth=3):
 
         if result is None:
             logger.error("Could not extract valid JSON from API response")
-            return Task(task=task, subtasks=[])
+            return Task(task=task, estimated_time="", technical_description="", subtasks=[])
 
         task_result = Task(**result)
         for subtask in task_result.subtasks:
             try:
-                subtask_breakdown = recursive_breakdown(subtask.description, depth + 1, max_depth)
+                subtask_breakdown = recursive_breakdown(subtask.description, initial_prompt, depth + 1, max_depth)
                 subtask.subtasks = subtask_breakdown.subtasks
             except Exception as e:
                 logger.error(f"Error processing subtask: {str(e)}")
-                # Continue processing other subtasks even if one fails
                 continue
 
         return task_result
 
     except Exception as e:
         logger.error(f"Error occurred while processing the API response: {str(e)}")
-        return Task(task=task, subtasks=[])
+        return Task(task=task, estimated_time="", technical_description="", subtasks=[])
 
 @app.post("/api/query")
 async def process_query(request: ProjectRequest):
     try:
-        result = recursive_breakdown(request.query)
+        result = recursive_breakdown(request.query, request.query)  # Pass initial prompt
         return result
     except Exception as e:
         logger.error(f"Error in process_query: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/progress")
+async def get_progress():
+    global progress
+    return progress
 
 # if __name__ == "__main__":
 #     import uvicorn
