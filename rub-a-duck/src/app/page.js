@@ -16,7 +16,7 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen p-8 bg-gray-100">
+    <div className="min-h-screen p-8">
       <DynamicHeader />
       <main className="max-w-4xl mx-auto mt-8">
         <h1 className="text-4xl font-bold text-center mb-8">Welcome to Rub-A-Duck</h1>
@@ -27,7 +27,7 @@ export default function Home() {
         <div className="text-center mb-12">
           <Link href="/home" passHref>
             <button className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded focus:outline-none focus:shadow-outline transition duration-300">
-              Go to Home Page
+              Let's build your project
             </button>
           </Link>
         </div>

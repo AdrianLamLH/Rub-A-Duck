@@ -9,7 +9,7 @@ export default function ClickableLogo({ src, alt, width, height, size = 'normal'
   const pathname = usePathname();
 
   const handleLogoClick = (e) => {
-    if (pathname === '/home') {
+    if (pathname === '/') {
       e.preventDefault();
       window.scrollTo(0, 0);
     }
