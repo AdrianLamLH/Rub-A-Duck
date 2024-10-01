@@ -111,7 +111,7 @@ export default function Result() {
   // Function to fetch data with retry logic
   const fetchData = async (retryCount = 0) => {
     try {
-      const response = await fetch('https://rub-a-duck.vercel.app/api/query', {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/query`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -156,7 +156,7 @@ export default function Result() {
   // Function to fetch progress data
   const fetchProgress = async () => {
     try {
-      const response = await fetch('https://rub-a-duck.vercel.app/api/progress');
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/progress`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
