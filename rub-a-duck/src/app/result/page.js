@@ -70,6 +70,7 @@ const ProjectBreakdown = ({ projectData }) => {
   // Create a unique identifier based on project attributes
   const projectIdentifier = btoa(JSON.stringify({
     description: projectData.description,
+    technical_description: projectData.technical_description,
     estimatedTime: projectData.estimated_time,
   }));
 

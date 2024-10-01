@@ -1,10 +1,113 @@
 'use client'
 
-import React, { useState, useEffect } from 'react';
-import Image from 'next/image';
-import rad_logo from '/rad_logo.png'; // Make sure this path is correct
+import React, { useState, useEffect, useCallback } from 'react';
 import DynamicHeader from '../components/dynamic_header';
 import { useSearchParams } from 'next/navigation'
+import ReactFlow, { 
+  Background, 
+  Controls, 
+  MiniMap, 
+  useNodesState, 
+  useEdgesState,
+  MarkerType,
+  Handle,
+} from 'reactflow';
+import 'reactflow/dist/style.css';
+import CustomNode from '../components/custom_nodes';
+// const CustomNode = ({ data }) => (
+//   <div className="bg-white border-2 border-gray-300 rounded p-2 shadow-md w-80 flex flex-col justify-between">
+//     <Handle type="target" position="top" />
+//     <div className="font-bold truncate">{data.label}</div>
+//     {/* <div>{data.nodeNum}</div> */}
+//     <div className="text-sm text-gray-600">{data.description}</div>
+//     <div className="text-sm italic">Time: {data.estimatedTime}</div>
+//     <Handle type="source" position="bottom" />
+//   </div>
+// );
+
+const nodeTypes = {
+  custom: CustomNode,
+};
+
+function ProjectFlowChart({ projectData }) {
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+
+  const transformData = useCallback((data, parentId = null, depth = 0, branchIndex = 0) => {
+    let nodes = [];
+    let edges = [];
+    const nodeId = parentId ? `${parentId}-${depth}-${branchIndex}` : 'root';
+    
+    // Calculate position based on depth and branchIndex
+    const xSpacing = 400;
+    const ySpacing = 200;
+    let nodePosition = {
+      x: branchIndex * xSpacing ,
+      y: depth * ySpacing}
+    if (parentId !== null && parentId !== 'root') {
+    nodePosition = { x: branchIndex * xSpacing + (2-parentId[parentId.length-1])*1000, y: depth * ySpacing };
+    };
+
+    nodes.push({
+      id: nodeId,
+      type: 'custom',
+      position: nodePosition,
+      data: { 
+        nodeNum: nodeId,
+        label: data.description, 
+        description: data.technical_description,
+        estimatedTime: data.estimated_time 
+      },
+    });
+
+    if (parentId !== null) {
+      edges.push({
+        id: `edge-${parentId}-${nodeId}`,
+        source: parentId,
+        target: nodeId,
+        type: 'smoothstep',
+        markerEnd: {
+          type: MarkerType.ArrowClosed,
+        },
+      });
+    }
+
+    if (data.subtasks && data.subtasks.length > 0) {
+      data.subtasks.forEach((subtask, subtaskIndex) => {
+        const [childNodes, childEdges] = transformData(subtask, nodeId, depth + 1, subtaskIndex);
+        nodes = [...nodes, ...childNodes];
+        edges = [...edges, ...childEdges];
+      });
+    }
+
+    return [nodes, edges];
+  }, []);
+
+  useEffect(() => {
+    if (projectData) {
+      const [transformedNodes, transformedEdges] = transformData(projectData);
+      setNodes(transformedNodes);
+      setEdges(transformedEdges);
+    }
+  }, [projectData, transformData, setNodes, setEdges]);
+
+  return (
+    <div style={{ width: '100%', height: '800px' }}>
+      <ReactFlow
+        nodes={nodes}
+        edges={edges}
+        onNodesChange={onNodesChange}
+        onEdgesChange={onEdgesChange}
+        nodeTypes={nodeTypes}
+        fitView
+      >
+        <Background />
+        <Controls />
+        <MiniMap />
+      </ReactFlow>
+    </div>
+  );
+}
 
 export default function Graph_Vis() {
   const [projectData, setProjectData] = useState(null);
@@ -25,9 +128,9 @@ export default function Graph_Vis() {
         if (storedData) {
           const parsedData = JSON.parse(storedData);
           const storedIdentifier = btoa(JSON.stringify({
-            description: parsedData.description || parsedData.task,
+            description: parsedData.description,
+            technical_description: parsedData.technical_description,
             estimatedTime: parsedData.estimated_time,
-            // Add more unique attributes if available
           }));
 
           if (storedIdentifier === identifier) {
@@ -37,7 +140,6 @@ export default function Graph_Vis() {
         }
       }
       
-      // If we couldn't retrieve from storage or identifiers don't match
       setError("Project data not found. You may need to regenerate the project breakdown.");
     } catch (err) {
       setError("Error retrieving project data: " + err.message);
@@ -48,7 +150,7 @@ export default function Graph_Vis() {
     <div className="min-h-screen p-8">
       <DynamicHeader />
 
-      <main className="w-full max-w-3xl mx-auto">
+      <main className="w-full mx-auto">
         {error && (
           <div className="text-red-500 mb-4">Error: {error}</div>
         )}
@@ -56,10 +158,7 @@ export default function Graph_Vis() {
         {projectData ? (
           <div>
             <h2 className="text-2xl font-bold mb-4">Project Visualization</h2>
-            {/* Replace this with your actual visualization component */}
-            <pre className="bg-gray-100 p-4 rounded overflow-auto">
-              {JSON.stringify(projectData, null, 2)}
-            </pre>
+            <ProjectFlowChart projectData={projectData} />
           </div>
         ) : (
           <p>Loading project data...</p>
