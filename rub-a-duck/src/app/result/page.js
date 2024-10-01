@@ -7,21 +7,23 @@ import React, { useState, useEffect } from 'react';
 import DynamicHeader from '../components/dynamic_header';
 import ProgressBar from '../components/progress_bar';
 
+// Component to render individual task items
 const TaskItem = ({ task, level = 0 }) => {
   const [isExpanded, setIsExpanded] = useState(level < 2);
   const [showTechnical, setShowTechnical] = useState(false);
 
   const hasSubtasks = task.subtasks && task.subtasks.length > 0;
 
-  // Calculate indentation
+  // Calculate indentation based on the task level
   const indentationStyle = {
     paddingLeft: `${level * 2.5}rem`
   };
 
   return (
     <div className="mb-2">
+      {/* Task header with expand/collapse button and description */}
       <div className="flex items-center justify-between" style={indentationStyle}>
-      <div className="flex items-center flex-grow mr-2 min-w-0">
+        <div className="flex items-center flex-grow mr-2 min-w-0">
           {hasSubtasks && (
             <button 
               onClick={() => setIsExpanded(!isExpanded)} 
@@ -34,6 +36,7 @@ const TaskItem = ({ task, level = 0 }) => {
             {task.description || task.task}
           </h3>
         </div>
+        {/* Toggle button for technical description */}
         {task.technical_description && (
           <button 
             onClick={() => setShowTechnical(!showTechnical)}
@@ -43,12 +46,14 @@ const TaskItem = ({ task, level = 0 }) => {
           </button>
         )}
       </div>
+      {/* Task details including estimated time and technical description */}
       <div className="ml-4" style={indentationStyle}>
         <p className="text-sm text-gray-500">Estimated time: {task.estimated_time}</p>
         {showTechnical && task.technical_description && (
           <p className="mt-2 text-sm text-gray-600 bg-gray-100 p-2 rounded">{task.technical_description}</p>
         )}
       </div>
+      {/* Render subtasks recursively if expanded */}
       {isExpanded && hasSubtasks && (
         <div className="mt-2">
           {task.subtasks.map((subtask, index) => (
@@ -60,15 +65,38 @@ const TaskItem = ({ task, level = 0 }) => {
   );
 };
 
+// Component to render the entire project breakdown
 const ProjectBreakdown = ({ projectData }) => {
+  // Create a unique identifier based on project attributes
+  const projectIdentifier = btoa(JSON.stringify({
+    description: projectData.description,
+    estimatedTime: projectData.estimated_time,
+  }));
+
+  // Store the full project data in sessionStorage
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('currentProjectData', JSON.stringify(projectData));
+  }
+
   return (
     <div className="w-full max-w-3xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">Project Task Breakdown</h2>
       <TaskItem task={projectData} />
+      <Link
+        href={{
+          pathname: '/graph_vis',
+          query: { project: projectIdentifier },
+        }}
+      >
+        <button className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+          Go to Graph Visualization
+        </button>
+      </Link>
     </div>
   );
 };
 
+// Main component for the result page
 export default function Result() {
   const [projectData, setProjectData] = useState(null);
   const [progress, setProgress] = useState({ current_depth: 0, max_depth: 3 });
@@ -79,6 +107,7 @@ export default function Result() {
   const MAX_RETRIES = 3;
   const RETRY_DELAY = 1000; // 1 second
 
+  // Function to fetch data with retry logic
   const fetchData = async (retryCount = 0) => {
     try {
       const response = await fetch('http://localhost:8000/api/query', {
@@ -106,6 +135,7 @@ export default function Result() {
     }
   };
 
+  // Function to fetch project data
   const fetchProjectData = async () => {
     setIsLoading(true);
     setError(null);
@@ -122,6 +152,7 @@ export default function Result() {
     }
   };
 
+  // Function to fetch progress data
   const fetchProgress = async () => {
     try {
       const response = await fetch('http://localhost:8000/api/progress');
@@ -136,6 +167,7 @@ export default function Result() {
     }
   };
 
+  // Effect to poll for progress updates while loading
   useEffect(() => {
     let intervalId;
     if (isLoading) {
@@ -151,6 +183,7 @@ export default function Result() {
       <DynamicHeader />
 
       <main className="flex flex-col gap-8 w-full max-w-3xl">
+        {/* Query input and submit button */}
         <div>
           <input
             type="text"
@@ -168,10 +201,13 @@ export default function Result() {
           </button>
         </div>
 
+        {/* Progress bar */}
         {isLoading && <ProgressBar currentDepth={progress.current_depth} maxDepth={progress.max_depth} />}
         
+        {/* Error message */}
         {error && <p className="text-red-500 mb-4">Error: {error}</p>}
         
+        {/* Project breakdown or loading message */}
         {isLoading ? (
           <p>Loading project data...</p>
         ) : projectData ? (
@@ -181,6 +217,7 @@ export default function Result() {
         )}
       </main>
 
+      {/* Footer */}
       <footer className="flex gap-6 flex-wrap items-center justify-center">
         <a
           className="flex items-center gap-2 hover:underline hover:underline-offset-4"
