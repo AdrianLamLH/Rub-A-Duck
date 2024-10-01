@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, Suspense } from 'react';
 import DynamicHeader from '../components/dynamic_header';
 import { useSearchParams } from 'next/navigation'
 import ReactFlow, { 
@@ -109,9 +109,7 @@ function ProjectFlowChart({ projectData }) {
   );
 }
 
-export default function Graph_Vis() {
-  const [projectData, setProjectData] = useState(null);
-  const [error, setError] = useState(null);
+function ProjectDataFetcher({ setProjectData, setError }) {
   const searchParams = useSearchParams();
 
   useEffect(() => {
@@ -146,11 +144,22 @@ export default function Graph_Vis() {
     }
   };
 
+  return null; // This component doesn't render anything
+}
+
+export default function Graph_Vis() {
+  const [projectData, setProjectData] = useState(null);
+  const [error, setError] = useState(null);
+
   return (
     <div className="min-h-screen p-8">
       <DynamicHeader />
 
       <main className="w-full mx-auto">
+        <Suspense fallback={<p>Loading project data...</p>}>
+          <ProjectDataFetcher setProjectData={setProjectData} setError={setError} />
+        </Suspense>
+
         {error && (
           <div className="text-red-500 mb-4">Error: {error}</div>
         )}
@@ -161,7 +170,7 @@ export default function Graph_Vis() {
             <ProjectFlowChart projectData={projectData} />
           </div>
         ) : (
-          <p>Loading project data...</p>
+          <p>Waiting for project data...</p>
         )}
       </main>
     </div>
