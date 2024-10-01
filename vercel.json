@@ -2,14 +2,17 @@
     "version": 2,
     "builds": [
       {
-        "src": "app.py",
+        "src": "recursive_calls.py",
         "use": "@vercel/python"
       }
     ],
     "routes": [
       {
         "src": "/(.*)",
-        "dest": "app.py"
+        "dest": "recursive_calls.py"
       }
-    ]
+    ],
+    "env": {
+      "APP_MODULE": "recursive_calls:app"
+    }
   }
