@@ -4,7 +4,7 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import ClickableLogo from './clickable_logo';
-import rad_logo from '../../../rad_logo.png'; // Ensure this path is correct
+import rad_logo from '../../public/rad_logo.png'; // Ensure this path is correct
 
 const DynamicHeader = () => {
     const [scrollProgress, setScrollProgress] = useState(0);

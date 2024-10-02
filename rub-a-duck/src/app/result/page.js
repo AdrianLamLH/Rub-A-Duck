@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import Image from "next/image";
-import rad_logo from "/rad_logo.png";
+// import rad_logo from "/rad_logo.png";
 import React, { useState, useEffect } from 'react';
 import DynamicHeader from '../components/dynamic_header';
 import ProgressBar from '../components/progress_bar';
