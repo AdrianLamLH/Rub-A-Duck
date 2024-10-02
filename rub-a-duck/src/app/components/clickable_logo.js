@@ -20,7 +20,7 @@ export default function ClickableLogo({ src, alt, width, height, size = 'normal'
   return (
     <Link href="/" onClick={handleLogoClick}>
       <Image
-        className={`dark:invert cursor-pointer transition-all duration-300 ${sizeClasses}`}
+        className={`cursor-pointer transition-all duration-300 ${sizeClasses}`}
         src={src}
         alt={alt}
         width={width}
