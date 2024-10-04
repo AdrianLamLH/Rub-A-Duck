@@ -6,6 +6,9 @@ import Image from "next/image";
 import React, { useState, useEffect } from 'react';
 import DynamicHeader from '../components/dynamic_header';
 import ProgressBar from '../components/progress_bar';
+import { Sandpack, SandpackConsole } from "@codesandbox/sandpack-react";
+import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
 
 // Component to render individual task items
 const TaskItem = ({ task, level = 0 }) => {
@@ -65,6 +68,144 @@ const TaskItem = ({ task, level = 0 }) => {
   );
 };
 
+
+const CodeDisplay = ({ files }) => {
+  const [selectedFile, setSelectedFile] = useState(Object.keys(files)[0]);
+
+  const getLanguage = (filename) => {
+    const extension = filename.split('.').pop();
+    switch (extension) {
+      case 'js':
+      case 'jsx':
+        return 'javascript';
+      case 'py':
+        return 'python';
+      case 'ts':
+      case 'tsx':
+        return 'typescript';
+      case 'html':
+        return 'html';
+      case 'css':
+        return 'css';
+      case 'json':
+        return 'json';
+      case 'yml':
+      case 'yaml':
+        return 'yaml';
+      case 'md':
+        return 'markdown';
+      default:
+        return 'text';
+    }
+  };
+
+  const getFileContent = (file) => {
+    if (typeof file === 'string') {
+      return file;
+    } else if (file && typeof file === 'object' && 'content' in file) {
+      return file.content;
+    }
+    return '';
+  };
+
+  const getFileExplanation = (file) => {
+    if (file && typeof file === 'object' && 'explanation' in file) {
+      return file.explanation;
+    }
+    return null;
+  };
+
+  return (
+    <div className="mt-4">
+      <div className="mb-4">
+        <label htmlFor="file-select" className="mr-2">Select file:</label>
+        <select
+          id="file-select"
+          value={selectedFile}
+          onChange={(e) => setSelectedFile(e.target.value)}
+          className="p-2 border rounded"
+        >
+          {Object.keys(files).map((filename) => (
+            <option key={filename} value={filename}>
+              {filename}
+            </option>
+          ))}
+        </select>
+      </div>
+      {getFileExplanation(files[selectedFile]) && (
+        <div className="mb-4 p-4 bg-gray-100 rounded">
+          <h3 className="font-bold mb-2">File Explanation:</h3>
+          <p>{getFileExplanation(files[selectedFile])}</p>
+        </div>
+      )}
+      <SyntaxHighlighter 
+        language={getLanguage(selectedFile)} 
+        style={docco}
+        className="text-sm"
+        showLineNumbers
+      >
+        {getFileContent(files[selectedFile])}
+      </SyntaxHighlighter>
+    </div>
+  );
+};
+
+const FullStackCodeGeneration = ({ projectData }) => {
+  const [generatedFiles, setGeneratedFiles] = useState(null);
+  const [error, setError] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const generateFullStackApp = async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/api/generate_fullstack_app`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ project_breakdown: projectData }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.detail || 'Failed to generate full-stack app');
+      }
+
+      if (!data.generated_files || Object.keys(data.generated_files).length === 0) {
+        throw new Error('No files were generated');
+      }
+
+      setGeneratedFiles(data.generated_files);
+    } catch (error) {
+      console.error('Error generating full-stack app:', error);
+      setError(error.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <button
+        onClick={generateFullStackApp}
+        disabled={isLoading}
+        className={`mt-4 px-4 py-2 text-white rounded transition-colors ${
+          isLoading ? 'bg-gray-400' : 'bg-green-500 hover:bg-green-600'
+        }`}
+      >
+        {isLoading ? 'Generating...' : 'Generate Full-stack App'}
+      </button>
+      {error && (
+        <p className="text-red-500 mt-2">
+          Error: {error}. Please try again or contact support if the problem persists.
+        </p>
+      )}
+      {generatedFiles && <CodeDisplay files={generatedFiles} />}
+    </div>
+  );
+};
 // Component to render the entire project breakdown
 const ProjectBreakdown = ({ projectData }) => {
   // Create a unique identifier based on project attributes
@@ -83,16 +224,19 @@ const ProjectBreakdown = ({ projectData }) => {
     <div className="w-full max-w-3xl mx-auto">
       <h2 className="text-2xl font-bold mb-4">Project Task Breakdown</h2>
       <TaskItem task={projectData} />
-      <Link
-        href={{
-          pathname: '/graph_vis',
-          query: { project: projectIdentifier },
-        }}
-      >
-        <button className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
-          Go to Graph Visualization
-        </button>
-      </Link>
+      <div className="flex space-x-4">
+        <Link
+          href={{
+            pathname: '/graph_vis',
+            query: { project: projectIdentifier },
+          }}
+        >
+          <button className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors">
+            Go to Graph Visualization
+          </button>
+        </Link>
+        <FullStackCodeGeneration projectData={projectData} />
+      </div>
     </div>
   );
 };
@@ -206,6 +350,8 @@ export default function Result() {
         {/* Progress bar */}
         {isLoading && <ProgressBar currentDepth={progress.current_depth} maxDepth={progress.max_depth} />}
         
+        {/* {projectData && <CodeGenerationButton projectData={projectData} />} */}
+
         {/* Error message */}
         {error && <p className="text-red-500 mb-4">Error: {error}</p>}
         

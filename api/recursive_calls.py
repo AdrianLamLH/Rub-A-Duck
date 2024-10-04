@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 import os
 # from groq import Groq
 from cerebras.cloud.sdk import Cerebras
@@ -250,3 +250,102 @@ async def process_query(request: ProjectRequest):
 async def get_progress():
     global progress
     return progress
+
+class CodeGenerationRequest(BaseModel):
+    project_breakdown: Dict[str, Any]
+
+def generate_fullstack_app(project_breakdown: Dict[str, Any]) -> Dict[str, str]:
+    prompt = f"""
+    As an expert full-stack developer, your task is to generate a comprehensive, working full-stack web application based on the following project breakdown:
+
+    {json.dumps(project_breakdown, indent=2)}
+
+    Follow these strict guidelines:
+
+    1. Frontend (React with Redux or Next.js):
+       - Create a 'frontend' directory with all necessary files.
+       - Implement ALL features described in the project breakdown.
+       - Use modern React practices (hooks, functional components).
+       - Implement proper state management using Redux or React Context.
+       - Create reusable components where appropriate.
+       - Implement responsive design using CSS or a UI framework.
+
+    2. Backend (FastAPI or Django REST Framework):
+       - Create a 'backend' directory with all necessary files.
+       - Implement ALL API endpoints required by the frontend.
+       - Use proper routing and follow RESTful principles.
+       - Implement error handling and input validation.
+       - If using a database, include models and migrations.
+
+    3. README.md:
+       - Provide clear setup instructions for both frontend and backend.
+       - List all major features of the application.
+       - Include any necessary environment variables.
+       - Describe the project structure.
+
+    4. Additional components (if relevant to the project):
+       - Database models and migrations
+       - Authentication and authorization
+       - API documentation (e.g., Swagger for FastAPI)
+       - Basic unit tests for critical components
+       - A simple Dockerfile for containerization
+
+    IMPORTANT:
+    - Ensure ALL code is complete, functional, and free of placeholders or TODOs.
+    - ALL files must work together cohesively to create a fully functional application.
+    - Do NOT omit any necessary code or configurations.
+    - Provide DETAILED comments explaining complex logic or configurations.
+    - Ensure that the generated code EXACTLY matches the requirements in the project breakdown.
+
+    Format your response as follows:
+    1. Start each file with a markdown code block: ```filename
+    2. End each file with: ```
+    3. Provide a brief explanation before each file about its purpose and how it fits into the overall application.
+
+    Begin generating the full-stack application now.
+    """
+
+    try:
+        response = client.chat.completions.create(
+            messages=[
+                {"role": "system", "content": "You are an expert full-stack developer."},
+                {"role": "user", "content": prompt}
+            ],
+            model="llama3.1-8b",
+        )
+
+        generated_code = response.choices[0].message.content
+        
+        # Parse the generated code into separate files
+        files = {}
+        current_file = ""
+        current_content = []
+
+        for line in generated_code.split('\n'):
+            if line.startswith('```') and line.strip() != '```':
+                if current_file:
+                    files[current_file] = '\n'.join(current_content)
+                    current_content = []
+                current_file = line.strip('`').strip()
+            elif line.strip() == '```' and current_file:
+                files[current_file] = '\n'.join(current_content)
+                current_file = ""
+                current_content = []
+            elif current_file:
+                current_content.append(line)
+
+        return files
+
+    except Exception as e:
+        logger.error(f"Error in code generation: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to generate code")
+
+@app.post("/api/generate_fullstack_app")
+async def generate_fullstack_app_endpoint(request: CodeGenerationRequest):
+    try:
+        logger.info(f"Received project breakdown: {request.project_breakdown}")
+        generated_files = generate_fullstack_app(request.project_breakdown)
+        return {"generated_files": generated_files}
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        raise HTTPException(status_code=500, detail=str(e))
