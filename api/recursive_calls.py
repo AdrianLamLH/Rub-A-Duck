@@ -291,6 +291,7 @@ def generate_fullstack_app(project_breakdown: Dict[str, Any]) -> Dict[str, str]:
        - A simple Dockerfile for containerization
 
     IMPORTANT:
+    - Make sure to include a readme file with clear instructions on how to run the application.
     - Ensure ALL code is complete, functional, and free of placeholders or TODOs.
     - ALL files must work together cohesively to create a fully functional application.
     - Do NOT omit any necessary code or configurations.

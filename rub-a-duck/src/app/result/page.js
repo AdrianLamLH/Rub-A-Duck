@@ -9,6 +9,8 @@ import ProgressBar from '../components/progress_bar';
 import { Sandpack, SandpackConsole } from "@codesandbox/sandpack-react";
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { docco } from 'react-syntax-highlighter/dist/esm/styles/hljs';
+import JSZip from 'jszip';
+
 
 // Component to render individual task items
 const TaskItem = ({ task, level = 0 }) => {
@@ -186,6 +188,53 @@ const FullStackCodeGeneration = ({ projectData }) => {
     }
   };
 
+  const downloadZip = async () => {
+    if (!generatedFiles) return;
+
+    const zip = new JSZip();
+
+    Object.entries(generatedFiles).forEach(([filename, fileContent]) => {
+      let content = fileContent;
+      if (typeof fileContent === 'object' && 'content' in fileContent) {
+        content = fileContent.content;
+      }
+
+      // Ensure the filename has an extension
+      if (!filename.includes('.')) {
+        const extension = getFileExtension(content);
+        filename = `${filename}${extension}`;
+      }
+
+      zip.file(filename, content);
+    });
+
+    const content = await zip.generateAsync({ type: "blob" });
+    const url = URL.createObjectURL(content);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'generated-fullstack-app.zip';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const getFileExtension = (content) => {
+    // Determine file type based on content
+    if (content.includes('import React') || content.includes('from "react"')) {
+      return '.jsx';
+    } else if (content.includes('function') || content.includes('const') || content.includes('let')) {
+      return '.js';
+    } else if (content.startsWith('<!DOCTYPE html>') || content.includes('<html>')) {
+      return '.html';
+    } else if (content.includes('@import') || content.includes('{') || content.includes(':')) {
+      return '.css';
+    } else if (content.trim().startsWith('{') && content.trim().endsWith('}')) {
+      return '.json';
+    } else {
+      return '.txt';  // Default extension if type can't be determined
+    }
+  };
+
   return (
     <div>
       <button
@@ -202,7 +251,17 @@ const FullStackCodeGeneration = ({ projectData }) => {
           Error: {error}. Please try again or contact support if the problem persists.
         </p>
       )}
-      {generatedFiles && <CodeDisplay files={generatedFiles} />}
+      {generatedFiles && (
+        <>
+          <CodeDisplay files={generatedFiles} />
+          <button
+            onClick={downloadZip}
+            className="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+          >
+            Download as ZIP
+          </button>
+        </>
+      )}
     </div>
   );
 };
